@@ -1,0 +1,1669 @@
+using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using Systienda.DataAccess.Repository;
+using Systienda.Models;
+using Systienda.Dialogs;
+using System.Data;
+using Systienda.Services;
+using System.Text.RegularExpressions;
+
+namespace Systienda.Pages
+{
+    /// <summary>
+    /// Interaction logic for PageProductosDetalle.xaml
+    /// </summary>
+    public partial class PageProductosDetalle : Page
+    {
+        public PageProductosDetalle(string idProducto, bool nuevo)
+        {
+            InitializeComponent();
+            esNuevo = nuevo;
+            idProd = idProducto;
+            Inicio();
+            AsignaTeclado();
+        }
+        public PageProductosDetalle(string idProducto, bool nuevo, DialogProductosSub contenedor)
+        {
+            InitializeComponent();
+            esNuevo = nuevo;
+            idProd = idProducto;
+            Inicio();
+            thiscontenedor = contenedor;
+            esDialogo = true;
+            AsignaTeclado();
+        }
+        #region Variables
+        string idProd;
+        bool esNuevo;
+        DialogProductosSub thiscontenedor;
+        bool esDialogo = false;
+        Producto productoUpdate;
+        TextBox globaltxtOrigen;
+        TextBox txtOrigen = new TextBox();
+        bool separarCombo = false;
+
+        string textoMarca = "Seleccione una marca";
+        string textoDepto = "Seleccione un departamento";
+        string textoProveedor = "Seleccione un Proveedor";
+        string textoPromocion = "Selecione una Promocion";
+        string textoDescripcion = "Descripción";
+        string textoSKU = "Código SKU";
+        #endregion
+
+        #region Controles
+        private void btnEliminar_Click(object sender, RoutedEventArgs e)
+        {
+            Eliminar();
+        }
+        private void btnCodigoBarras_Click(object sender, RoutedEventArgs e)
+        {
+            CodigoBarras();
+        }
+        private void btnGuardar_Click(object sender, RoutedEventArgs e)
+        {
+            Guardar();
+        }
+        private void btnAdjuntarImg_Click(object sender, RoutedEventArgs e)
+        {
+            AdjuntarImgMovil();
+        }
+        private void btnAdjuntarEquipo_Click(object sender, RoutedEventArgs e)
+        {
+            AdjuntarImgEquipo();
+        }
+        private void btnMarcaPlus_Click(object sender, RoutedEventArgs e)
+        {
+            MarcaPlus();
+        }
+        private void btnMarcaConfig_Click(object sender, RoutedEventArgs e)
+        {
+            MarcaConfig();
+        }
+        private void btnDeptoPlus_Click(object sender, RoutedEventArgs e)
+        {
+            DeptoPlus();
+        }
+        private void btnDeptoConfig_Click(object sender, RoutedEventArgs e)
+        {
+            DeptoConfig();
+        }
+        private void btnCancelar_Click(object sender, RoutedEventArgs e)
+        {
+            Cerrar();
+        }
+        private void btnProvPlus_Click(object sender, RoutedEventArgs e)
+        {
+            ProvPlus();
+        }
+        private void btnProvConfig_Click(object sender, RoutedEventArgs e)
+        {
+            ProvConfig();
+        }
+        private void btnPromPlus_Click(object sender, RoutedEventArgs e)
+        {
+            PromPlus();
+        }
+        private void btnPromoConfig_Click(object sender, RoutedEventArgs e)
+        {
+            PromoConfig();
+        }
+        private void txtSKU_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (txtSKU.Text == "Código SKU")
+            {
+                txtSKU.Text = String.Empty;
+            }
+        }
+        private void txtSKU_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtSKU.Text))
+            {
+                txtSKU.Text = "Código SKU";
+            }
+        }
+        private void txtDescripcion_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (txtDescripcion.Text == "Descripción")
+            {
+                txtDescripcion.Text = String.Empty;
+            }
+        }
+        private void txtDescripcion_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtDescripcion.Text))
+            {
+                txtDescripcion.Text = "Descripción";
+            }
+        }
+        private void sldCantEntrada_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (txtCantEntrada != null)
+            {
+                txtCantEntrada.Text = sldCantEntrada.Value.ToString();
+            }
+        }
+        private void sldCaducidad_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (txtCaducidad != null)
+            {
+                txtCaducidad.Text = sldCaducidad.Value.ToString();
+            }
+        }
+        private void sldStockMax_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (txtStockMax != null)
+            {
+                txtStockMax.Text = sldStockMax.Value.ToString();
+            }
+        }
+        private void sldStockMin_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (txtStockMin != null)
+            {
+                txtStockMin.Text = sldStockMin.Value.ToString();
+            }
+        }
+        private void sldGanancia_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (txtGanancia != null)
+            {
+                txtGanancia.Text = sldGanancia.Value.ToString();
+            }
+        }
+        private void sldPrecio_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (txtPrecio != null)
+            {
+                txtPrecio.Text = sldPrecio.Value.ToString();
+            }
+        }
+        private void sldCosto_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (txtCosto != null)
+            {
+                txtCosto.Text = sldCosto.Value.ToString();
+            }
+        }
+        private void txtMarca_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (txtMarca.Text == "Seleccione una marca")
+            {
+                txtMarca.Text = String.Empty;
+            }
+        }
+        private void txtDepartamento_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (txtDepartamento.Text == "Seleccione un departamento")
+            {
+                txtDepartamento.Text = String.Empty;
+            }
+        }
+        private void txtProveedor_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (txtProveedor.Text == "Seleccione un Proveedor")
+            {
+                txtProveedor.Text = String.Empty;
+            }
+        }
+        private void txtPromocion_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (txtPromocion.Text == "Selecione una Promocion")
+            {
+                //txtPromocion.Text = String.Empty;
+                AbreCombo("promociones", sender);
+            }
+        }
+        private void txtMarca_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtMarca.Text))
+            {
+                txtMarca.Text = "Seleccione una marca";
+            }
+            brd_Combo1.Visibility = Visibility.Hidden;
+        }
+        private void txtDepartamento_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtDepartamento.Text))
+            {
+                txtDepartamento.Text = "Seleccione un departamento";
+            }
+        }
+        private void txtProveedor_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtProveedor.Text))
+            {
+                txtProveedor.Text = "Seleccione un Proveedor";
+            }
+        }
+        private void txtPromocion_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtPromocion.Text))
+            {
+                txtPromocion.Text = "Selecione una Promocion";
+            }
+        }
+        private void txtClaveProductoF_GotFocus(object sender, RoutedEventArgs e)
+        {
+        }
+        private void txtClaveProductoF_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+        }
+        private void txtSKU_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (txtSKU.Text == "Código SKU")
+            {
+                txtSKU.Text = String.Empty;
+            }
+
+        }
+        private void txtDescripcion_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (txtDescripcion.Text == "Descripción")
+            {
+                txtDescripcion.Text = String.Empty;
+            }
+        }
+        private void txtProveedor_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (txtProveedor.Text == "Seleccione un Proveedor")
+            {
+                txtProveedor.Text = String.Empty;
+            }
+
+        }
+        private void txtPromocion_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (txtPromocion.Text == "Selecione una Promocion")
+            {
+                //txtPromocion.Text = String.Empty;
+                AbreCombo("promociones", sender);
+            }
+        }
+        private void txtDepartamento_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (txtDepartamento.Text == "Seleccione un departamento")
+            {
+                txtDepartamento.Text = String.Empty;
+            }
+        }
+        private void txtMarca_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (txtMarca.Text == "Seleccione una marca")
+            {
+                txtMarca.Text = String.Empty;
+            }
+        }
+        private void btnTab1_Click(object sender, RoutedEventArgs e)
+        {
+            CambiaTab(0, sender);
+        }
+        private void btnTab2_Click(object sender, RoutedEventArgs e)
+        {
+            CambiaTab(1, sender);
+        }
+        private void btnCmbMarca_Click(object sender, RoutedEventArgs e)
+        {
+            AbreCombo("marcas", sender);
+        }
+        private void btnCmbDepto_Click(object sender, RoutedEventArgs e)
+        {
+            AbreCombo("departamentos", sender);
+        }
+        private void btnCmbProv_Click(object sender, RoutedEventArgs e)
+        {
+            AbreCombo("proveedores", sender);
+        }
+        private void btnCmbPromo_Click(object sender, RoutedEventArgs e)
+        {
+            AbreCombo("promociones", sender);
+        }
+        private void btnCmbUM_Click(object sender, RoutedEventArgs e)
+        {
+            AbreCombo("unidadesmedida", sender);
+        }
+        private void btnCmbClaveFactura_Click(object sender, RoutedEventArgs e)
+        {
+            AbreCombo("clavessat", sender);
+        }
+        private void txtClaveProductoF_LostFocus(object sender, RoutedEventArgs e)
+        {
+
+        }
+        private void txtFiltroUM_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(txtFiltroUM.Text.Trim()))
+            {
+                return;
+            }
+
+            txtOrigen = txtUM;
+            DataTable dtTop5 = ProductosRepository.GetTop5Combo("unidadesmedida", txtFiltroUM.Text.Trim(), idProd);
+
+            DataTable dtDefault = new DataTable("dtDefault");
+            dtDefault.Columns.Add("Id", typeof(string));
+            dtDefault.Columns.Add("Nombre", typeof(string));
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                dtDefault = dtTop5.Copy();
+            }
+
+            if (dtTop5.Rows.Count != 5)
+            {
+                for (int i = 1; i <= 5; i++)
+                {
+                    if (dtDefault.Rows.Count < i)
+                    {
+                        DataRow dr = dtDefault.NewRow();
+                        dr[0] = -1;
+                        dr[1] = "";
+                        dtDefault.Rows.Add(dr);
+                    }
+                }
+            }
+
+            if (dtTop5.Rows.Count < 5)
+            {
+                dtTop5 = dtDefault;
+            }
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                AbreBordeCombo(dtTop5, "unidadesmedida");
+            }
+        }
+        private void txtClaveSAT_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(txtClaveSAT.Text.Trim()))
+            {
+                return;
+            }
+
+            txtOrigen = txtUM;
+            DataTable dtTop5 = ProductosRepository.GetTop5Combo("clavessat", txtClaveSAT.Text.Trim(), idProd);
+
+            DataTable dtDefault = new DataTable("dtDefault");
+            dtDefault.Columns.Add("Id", typeof(string));
+            dtDefault.Columns.Add("Nombre", typeof(string));
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                dtDefault = dtTop5.Copy();
+            }
+
+            if (dtTop5.Rows.Count != 5)
+            {
+                for (int i = 1; i <= 5; i++)
+                {
+                    if (dtDefault.Rows.Count < i)
+                    {
+                        DataRow dr = dtDefault.NewRow();
+                        dr[0] = -1;
+                        dr[1] = "";
+                        dtDefault.Rows.Add(dr);
+                    }
+                }
+            }
+
+            if (dtTop5.Rows.Count < 5)
+            {
+                dtTop5 = dtDefault;
+            }
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                AbreBordeCombo(dtTop5, "clavessat");
+            }
+        }
+        private void txtFiltroDept_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(txtFiltroDept.Text.Trim()))
+            {
+                return;
+            }
+
+            txtOrigen = txtDepartamento;
+            DataTable dtTop5 = ProductosRepository.GetTop5Combo("departamentos", txtFiltroDept.Text.Trim(), idProd);
+
+            DataTable dtDefault = new DataTable("dtDefault");
+            dtDefault.Columns.Add("Id", typeof(string));
+            dtDefault.Columns.Add("Nombre", typeof(string));
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                dtDefault = dtTop5.Copy();
+            }
+
+            if (dtTop5.Rows.Count != 5)
+            {
+                for (int i = 1; i <= 5; i++)
+                {
+                    if (dtDefault.Rows.Count < i)
+                    {
+                        DataRow dr = dtDefault.NewRow();
+                        dr[0] = -1;
+                        dr[1] = "";
+                        dtDefault.Rows.Add(dr);
+                    }
+                }
+            }
+
+            if (dtTop5.Rows.Count < 5)
+            {
+                dtTop5 = dtDefault;
+            }
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                AbreBordeCombo(dtTop5, "departamentos");
+            }
+        }
+        private void txtFiltroProm_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(txtFiltroProm.Text.Trim()))
+            {
+                return;
+            }
+
+            txtOrigen = txtPromocion;
+            DataTable dtTop5 = ProductosRepository.GetTop5Combo("promociones", txtFiltroProm.Text.Trim(), idProd);
+
+            DataTable dtDefault = new DataTable("dtDefault");
+            dtDefault.Columns.Add("Id", typeof(string));
+            dtDefault.Columns.Add("Nombre", typeof(string));
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                dtDefault = dtTop5.Copy();
+            }
+
+            if (dtTop5.Rows.Count != 5)
+            {
+                for (int i = 1; i <= 5; i++)
+                {
+                    if (dtDefault.Rows.Count < i)
+                    {
+                        DataRow dr = dtDefault.NewRow();
+                        dr[0] = -1;
+                        dr[1] = "";
+                        dtDefault.Rows.Add(dr);
+                    }
+                }
+            }
+
+            if (dtTop5.Rows.Count < 5)
+            {
+                dtTop5 = dtDefault;
+            }
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                AbreBordeCombo(dtTop5, "promociones");
+            }
+        }
+        private void txtFiltroProv_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(txtFiltroProv.Text.Trim()))
+            {
+                return;
+            }
+
+            txtOrigen = txtProveedor;
+            DataTable dtTop5 = ProductosRepository.GetTop5Combo("proveedores", txtFiltroProv.Text.Trim(), idProd);
+
+            DataTable dtDefault = new DataTable("dtDefault");
+            dtDefault.Columns.Add("Id", typeof(string));
+            dtDefault.Columns.Add("Nombre", typeof(string));
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                dtDefault = dtTop5.Copy();
+            }
+
+            if (dtTop5.Rows.Count != 5)
+            {
+                for (int i = 1; i <= 5; i++)
+                {
+                    if (dtDefault.Rows.Count < i)
+                    {
+                        DataRow dr = dtDefault.NewRow();
+                        dr[0] = -1;
+                        dr[1] = "";
+                        dtDefault.Rows.Add(dr);
+                    }
+                }
+            }
+
+            if (dtTop5.Rows.Count < 5)
+            {
+                dtTop5 = dtDefault;
+            }
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                AbreBordeCombo(dtTop5, "proveedores");
+            }
+        }
+        private void txtFiltroMarca_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(txtFiltroMarca.Text.Trim()))
+            {
+                return;
+            }
+
+            txtOrigen = txtMarca;
+            DataTable dtTop5 = ProductosRepository.GetTop5Combo("marcas", txtFiltroMarca.Text.Trim(), idProd);
+
+            DataTable dtDefault = new DataTable("dtDefault");
+            dtDefault.Columns.Add("Id", typeof(string));
+            dtDefault.Columns.Add("Nombre", typeof(string));
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                dtDefault = dtTop5.Copy();
+            }
+
+            if (dtTop5.Rows.Count != 5)
+            {
+                for (int i = 1; i <= 5; i++)
+                {
+                    if (dtDefault.Rows.Count < i)
+                    {
+                        DataRow dr = dtDefault.NewRow();
+                        dr[0] = -1;
+                        dr[1] = "";
+                        dtDefault.Rows.Add(dr);
+                    }
+                }
+            }
+
+            if (dtTop5.Rows.Count < 5)
+            {
+                dtTop5 = dtDefault;
+            }
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                AbreBordeCombo(dtTop5, "marcas");
+            }
+        }
+        private void chkIEPS8_Checked(object sender, RoutedEventArgs e)
+        {
+            var configProducto = ConfiguracionesRepository.Get();
+            if (configProducto.Result != null)
+            {
+                if (!configProducto.Result.IEPS)
+                {
+                    txtIEPS8.Focusable = true;
+                    Dialogos.TecladoNumerico(txtIEPS8);
+                }
+            }
+        }
+        private void chkIEPS16_Checked(object sender, RoutedEventArgs e)
+        {
+            var configProducto = ConfiguracionesRepository.Get();
+            if (configProducto.Result != null)
+            {
+                if (!configProducto.Result.IVA)
+                {
+                    txtIEPS16.Focusable = true;
+                    Dialogos.TecladoNumerico(txtIEPS16);
+                }
+            }
+        }
+        private void chkIEPS8_Unchecked(object sender, RoutedEventArgs e)
+        {
+            txtIEPS8.Focusable = false;
+            Dialogos.RemueveTecladoNumerico(txtIEPS8);
+        }
+        private void chkIEPS16_Unchecked(object sender, RoutedEventArgs e)
+        {
+            txtIEPS16.Focusable = false;
+            Dialogos.RemueveTecladoNumerico(txtIEPS16);
+        }
+        #endregion
+
+        #region Metodos
+        private void Inicio()
+        {
+            #region ImagenDefault
+            BitmapImage bitImagenProd = new BitmapImage();
+            string rutaImagenDefault = "pack://application:,,,../Resources/Images/Productos/imgProductoMuestra.png";
+            bitImagenProd.UriSource = new Uri(rutaImagenDefault);
+            imgProducto.Source = bitImagenProd;
+            #endregion
+
+            #region Configuracion SAT
+            stkAlertaIVAGlobal.Visibility = Visibility.Hidden;
+            txtIEPS8.Focusable = false;
+            txtIEPS16.Focusable = false;
+            Dialogos.RemueveTecladoNumerico(txtIEPS8);
+            Dialogos.RemueveTecladoNumerico(txtIEPS16);
+
+            bool ivaGlobal = false;
+            bool iepsGlobal = false;
+            var configProducto = ConfiguracionesRepository.Get();
+            if (configProducto.Result != null)
+            {
+                txtIEPS8.Text = configProducto.Result.IEPS_cantidad.ToString();
+                txtIEPS16.Text = configProducto.Result.IVA_cantidad.ToString();
+                ivaGlobal = configProducto.Result.IVA;
+                iepsGlobal = configProducto.Result.IEPS;
+            }
+            else
+            {
+                txtIEPS8.Text = "0.00";
+                txtIEPS16.Text = "0.00";
+            }
+
+            if (ivaGlobal || iepsGlobal)
+            {
+                stkAlertaIVAGlobal.Visibility = Visibility.Visible;
+
+                string textoAlertaIVA = "";
+                if (ivaGlobal)
+                {
+                    textoAlertaIVA += "IVA Global Activado. ";
+                }
+
+                if (iepsGlobal)
+                {
+                    textoAlertaIVA += "IEPS Global Activado. ";
+                }
+
+                lbltextoAlerta2.Content = textoAlertaIVA;
+            }
+            #endregion
+
+            if (esNuevo)
+            {
+                brdEliminar.Visibility = Visibility.Hidden;
+
+                txtMarca.Text = textoMarca;
+                txtDepartamento.Text = textoDepto;
+                txtProveedor.Text = textoProveedor;
+                txtPromocion.Text = textoPromocion;
+                txtSKU.Text = textoSKU;
+                txtDescripcion.Text = textoDescripcion;
+
+                txtCantEntrada.Text = "0";
+                sldCantEntrada.Value = 0;
+
+                txtCaducidad.Text = "0";
+                sldCaducidad.Value = 0;
+
+                txtStockMax.Text = "0";
+                sldStockMax.Value = 0;
+
+                txtStockMin.Text = "0";
+                sldStockMin.Value = 0;
+
+                txtGanancia.Text = "0";
+                sldGanancia.Value = 0;
+
+                txtPrecio.Text = "0";
+                sldPrecio.Value = 0;
+
+                txtCosto.Text = "0";
+                sldCosto.Value = 0;
+
+                txtUM.Text = String.Empty;
+                txtClaveProductoF.Text = String.Empty;
+
+                chkGranel.IsChecked = false;
+                chkIEPS8.IsChecked = false;
+                chkIEPS16.IsChecked = false;
+
+                idtxtMarca.Text = "0";
+                idtxtDepartamento.Text = "0";
+                idtxtProveedor.Text = "0";
+                idtxtPromocion.Text = "0";
+                idClaveProductoF.Text = "0";
+                txtIdUM.Text = "0";
+            }
+            else
+            {
+                productoUpdate = ProductosRepository.GetById(idProd);
+                brdEliminar.Visibility = Visibility.Visible;
+
+
+                txtMarca.Text = textoMarca;
+                txtDepartamento.Text = textoDepto;
+                txtProveedor.Text = textoProveedor;
+                txtPromocion.Text = textoPromocion;
+
+                idtxtMarca.Text = "0";
+                idtxtDepartamento.Text = "0";
+                idtxtProveedor.Text = "0";
+                idtxtPromocion.Text = "0";
+
+                idClaveProductoF.Text = "0";
+                txtIdUM.Text = "0";
+
+                if (productoUpdate.Id_marca.ToString() != "0")
+                {
+                    var marcaProd = MarcasRepository.GetById(productoUpdate.Id_marca.ToString());
+                    txtMarca.Text = marcaProd.Nombre;
+                    idtxtMarca.Text = productoUpdate.Id_marca.ToString();
+                    txtMarca.Name = "txtOpcion_" + idtxtMarca.Text;
+                }
+                if (productoUpdate.Id_departamento.ToString() != "0")
+                {
+                    var depProd = DepartamentosRepository.GetById(productoUpdate.Id_departamento.ToString());
+                    txtDepartamento.Text = depProd.Nombre;
+                    idtxtDepartamento.Text = productoUpdate.Id_departamento.ToString();
+                    txtDepartamento.Name = "txtOpcion_" + idtxtDepartamento.Text;
+                }
+                if (productoUpdate.Id_proveedor.ToString() != "0")
+                {
+                    var provProd = ProveedoresRepository.GetById(productoUpdate.Id_proveedor.ToString());
+                    txtProveedor.Text = provProd.Nombre;
+                    idtxtProveedor.Text = productoUpdate.Id_proveedor.ToString();
+                    txtProveedor.Name = "txtOpcion_" + idtxtProveedor.Text;
+                }
+
+                var promProd = PromocionesProductoRepository.GetByIdProducto(productoUpdate.Id.ToString());
+                if (promProd != null)
+                {
+                    var promoProd = PromocionesRepository.GetById(promProd.Id_promocion.ToString());
+                    txtPromocion.Text = promoProd.Nombre;
+                    txtPromocion.Name = "txtOpcion_" + promoProd.Id;
+                }
+
+                txtSKU.Text = productoUpdate.SKU;
+                txtDescripcion.Text = productoUpdate.Descripcion;
+
+                #region ImagenProducto
+                if (!string.IsNullOrEmpty(productoUpdate.Imagen))
+                {
+                    if (File.Exists(productoUpdate.Imagen))
+                    {
+                        txtDirImagen.Text = productoUpdate.Imagen;
+                        imgProducto.Source = new ImageSourceConverter().ConvertFromString(txtDirImagen.Text) as ImageSource;
+                    }
+                }
+                #endregion
+
+                txtCantEntrada.Text = productoUpdate.Stock.ToString();
+                sldCantEntrada.Value = (Double)productoUpdate.Stock;
+
+                txtCaducidad.Text = productoUpdate.Caducidad.ToString();
+                sldCaducidad.Value = (Double)productoUpdate.Caducidad;
+
+                txtStockMax.Text = productoUpdate.Stock_maximo.ToString();
+                sldStockMax.Value = (Double)productoUpdate.Stock_maximo;
+
+                txtStockMin.Text = productoUpdate.Stock_minimo.ToString();
+                sldStockMin.Value = (Double)productoUpdate.Stock_minimo;
+
+                txtGanancia.Text = productoUpdate.Ganancia.ToString();
+                sldGanancia.Value = (Double)productoUpdate.Ganancia;
+
+                txtPrecio.Text = productoUpdate.Precio.ToString();
+                sldPrecio.Value = (Double)productoUpdate.Precio;
+
+                txtCosto.Text = productoUpdate.Costo.ToString();
+                sldCosto.Value = (Double)productoUpdate.Costo;
+
+                txtUM.Text = String.Empty;
+                txtClaveProductoF.Text = String.Empty;
+
+                var umProd = unidadesMedidaRepository.GetById(productoUpdate.Id_unidadmedida.ToString());
+                if (umProd != null)
+                {
+                    txtUM.Text = umProd.Descripcion;
+                    txtIdUM.Text = productoUpdate.Id_unidadmedida.ToString();
+                }
+
+
+                var claveF = ClavesSatRepository.GetById(productoUpdate.Id_clavesat.ToString());
+                if (claveF != null)
+                {
+                    txtClaveProductoF.Text = claveF.Descripcion;
+                    idClaveProductoF.Text = productoUpdate.Id_clavesat.ToString();
+                }
+
+                chkGranel.IsChecked = productoUpdate.Granel;
+                chkIEPS8.IsChecked = productoUpdate.IEPS;
+                chkIEPS16.IsChecked = productoUpdate.IVA;
+
+                if (productoUpdate.IEPS)
+                {
+                    if (!iepsGlobal)
+                    {
+                        txtIEPS8.Text = productoUpdate.Monto_ieps.ToString();
+                        txtIEPS8.Focusable = true;
+                        Dialogos.TecladoNumerico(txtIEPS8);
+                    }
+                }
+
+                if (productoUpdate.IVA)
+                {
+                    if (!ivaGlobal)
+                    {
+                        txtIEPS16.Text = productoUpdate.Monto_iva.ToString();
+                        txtIEPS16.Focusable = true;
+                        Dialogos.TecladoNumerico(txtIEPS16);
+                    }
+                }
+            }
+
+            brd_Combo1.Visibility = Visibility.Hidden;
+            brd_Combo2.Visibility = Visibility.Hidden;
+            brd_Combo3.Visibility = Visibility.Hidden;
+            brd_Combo4.Visibility = Visibility.Hidden;
+            brd_Combo5.Visibility = Visibility.Hidden;
+            brd_Combo6.Visibility = Visibility.Hidden;
+            txtPromocion.IsReadOnly = true;
+        }
+        private void Cerrar()
+        {
+            if (esDialogo)
+            {
+                thiscontenedor.Close();
+            }
+            else
+            {
+                PageProductos productos = new PageProductos();
+                NavigationService.Navigate(productos);
+            }
+        }
+        private void AdjuntarImgMovil()
+        {
+            DialogImagenCelular imagenCelular = new DialogImagenCelular();
+            imagenCelular.ShowDialog();
+        }
+        private void AdjuntarImgEquipo()
+        {
+            try
+            {
+                Generales.CrearFolder(Generales._RutaImgProductos);
+                string rutaImagen = txtDirImagen.Text;
+
+                OpenFileDialog openFileDialog = new OpenFileDialog();
+                openFileDialog.Multiselect = false;
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    string rutaArchivo = openFileDialog.FileName;
+                    string destinationDirectory = Generales._RutaImgProductos;
+                    File.Copy(rutaArchivo, destinationDirectory + System.IO.Path.GetFileName(rutaArchivo), true);
+                    rutaImagen = destinationDirectory + System.IO.Path.GetFileName(rutaArchivo);
+                }
+
+                try
+                {
+                    if (!string.IsNullOrEmpty(rutaImagen.Trim()))
+                    {
+                        txtDirImagen.Text = rutaImagen;
+                        imgProducto.Source = new ImageSourceConverter().ConvertFromString(txtDirImagen.Text) as ImageSource;
+                    }
+                }
+                catch
+                {
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Dialogos.ShowMessage("No fue posible ligar imagen. Mensaje de error: " + ex.ToString());
+            }
+        }
+        private void MarcaPlus()
+        {
+            DialogEditarMarca nuevaMarca = new DialogEditarMarca(true, 0);
+            nuevaMarca.ShowDialog();
+        }
+        private void MarcaConfig()
+        {
+            DialogProductosSub productosSub2 = new DialogProductosSub("Marcas");
+            this.Visibility = Visibility.Collapsed;
+            productosSub2.Owner = App.Current.MainWindow;
+            productosSub2.ShowDialog();
+            this.Visibility = Visibility.Visible;
+        }
+        private void DeptoPlus()
+        {
+            DialogEditarDepto nuevoDepto = new DialogEditarDepto(true, 0);
+            nuevoDepto.ShowDialog();
+        }
+        private void DeptoConfig()
+        {
+            DialogProductosSub productosSub2 = new DialogProductosSub("Departamentos");
+            this.Visibility = Visibility.Collapsed;
+            productosSub2.Owner = App.Current.MainWindow;
+            productosSub2.ShowDialog();
+            this.Visibility = Visibility.Visible;
+        }
+        private void ProvPlus()
+        {
+            DialogProductosSub productosSub2 = new DialogProductosSub("ProveedoresDetalle");
+            this.Visibility = Visibility.Collapsed;
+            productosSub2.Owner = App.Current.MainWindow;
+            productosSub2.ShowDialog();
+            this.Visibility = Visibility.Visible;
+        }
+        private void ProvConfig()
+        {
+            DialogProductosSub productosSub2 = new DialogProductosSub("Proveedores");
+            this.Visibility = Visibility.Collapsed;
+            productosSub2.Owner = App.Current.MainWindow;
+            productosSub2.ShowDialog();
+            this.Visibility = Visibility.Visible;
+        }
+        private void PromPlus()
+        {
+            DialogProductosSub productosSub2 = new DialogProductosSub("PromocionesDetalle");
+            this.Visibility = Visibility.Collapsed;
+            productosSub2.Owner = App.Current.MainWindow;
+            productosSub2.ShowDialog();
+            this.Visibility = Visibility.Visible;
+        }
+        private void PromoConfig()
+        {
+            DialogProductosSub productosSub2 = new DialogProductosSub("Promociones");
+            this.Visibility = Visibility.Collapsed;
+            productosSub2.Owner = App.Current.MainWindow;
+            productosSub2.ShowDialog();
+            this.Visibility = Visibility.Visible;
+        }
+        private void Eliminar()
+        {
+            if (Dialogos.ShowMessage("Se eliminara el producto seleccionado del sistema.", "¿Eliminar Producto?", "No", "Si", TipoDialogo.YesNo) == true)
+            {
+                var resQry = ProductosRepository.InactivaProducto(idProd);
+                if (resQry)
+                {
+                    Dialogos.ShowMessage("Producto Eliminado");
+                    Cerrar();
+                }
+                else
+                {
+                    Dialogos.ShowMessage("No fue posible eliminar el producto.");
+                }
+            }
+        }
+        private void CodigoBarras()
+        {
+            Dialogos.ShowMessage("CodigoBarras no configurado.");
+        }
+        private void ActualizaSlider()
+        {
+            if (txtCantEntrada != null)
+            {
+                if (!Generales.EsNumeroEntero(txtCantEntrada.Text))
+                {
+                    txtCantEntrada.Text = "0";
+                }
+                sldCantEntrada.Value = Int32.Parse(txtCantEntrada.Text);
+            }
+
+            if (txtCaducidad != null)
+            {
+                if (!Generales.EsNumeroEntero(txtCaducidad.Text))
+                {
+                    txtCaducidad.Text = "0";
+                }
+                sldCaducidad.Value = Int32.Parse(txtCaducidad.Text);
+            }
+
+            if (txtCosto != null)
+            {
+                if (!Generales.EsNumeroEntero(txtCosto.Text))
+                {
+                    txtCosto.Text = "0";
+                }
+                sldCosto.Value = Int32.Parse(txtCosto.Text);
+            }
+
+            if (txtGanancia != null)
+            {
+                if (!Generales.EsNumeroEntero(txtGanancia.Text))
+                {
+                    txtGanancia.Text = "0";
+                }
+                sldGanancia.Value = Int32.Parse(txtGanancia.Text);
+            }
+
+            if (txtPrecio != null)
+            {
+                if (!Generales.EsNumeroEntero(txtPrecio.Text))
+                {
+                    txtPrecio.Text = "0";
+                }
+                sldPrecio.Value = Int32.Parse(txtPrecio.Text);
+            }
+
+            if (txtStockMax != null)
+            {
+                if (!Generales.EsNumeroEntero(txtStockMax.Text))
+                {
+                    txtStockMax.Text = "0";
+                }
+                sldStockMax.Value = Int32.Parse(txtStockMax.Text);
+            }
+
+            if (txtStockMin != null)
+            {
+                if (!Generales.EsNumeroEntero(txtStockMin.Text))
+                {
+                    txtStockMin.Text = "0";
+                }
+                sldStockMin.Value = Int32.Parse(txtStockMin.Text);
+            }
+        }
+        private void CambiaTab(int numIndex, object sender)
+        {
+            Dispatcher.BeginInvoke((Action)(() => tabControl.SelectedIndex = numIndex));
+
+            SolidColorBrush? fondoNaranja = new SolidColorBrush();
+            fondoNaranja = new BrushConverter().ConvertFrom("#FC9551") as SolidColorBrush;
+
+            SolidColorBrush? bordeGris = new SolidColorBrush();
+            bordeGris = new BrushConverter().ConvertFrom("#EFEFEF") as SolidColorBrush;
+
+
+            if (numIndex == 0)
+            {
+                BrdTabGeneral.Background = fondoNaranja;
+                BrdTabGeneral.BorderBrush = fondoNaranja;
+                txtTabGeneral.Foreground = new SolidColorBrush(Colors.White);
+
+                brdTabDetalle.Background = new SolidColorBrush(Colors.White);
+                brdTabDetalle.BorderBrush = bordeGris;
+                txtTabDetalle.Foreground = new SolidColorBrush(Colors.Black);
+            }
+            else if (numIndex == 1)
+            {
+                brdTabDetalle.Background = fondoNaranja;
+                brdTabDetalle.BorderBrush = fondoNaranja;
+                txtTabDetalle.Foreground = new SolidColorBrush(Colors.White);
+
+                BrdTabGeneral.Background = new SolidColorBrush(Colors.White);
+                BrdTabGeneral.BorderBrush = bordeGris;
+                txtTabGeneral.Foreground = new SolidColorBrush(Colors.Black);
+            }
+        }
+        private void AbreCombo(string nombreTabla, object sender)
+        {
+            DataTable dtTop5 = new DataTable();
+
+            if (nombreTabla == "departamentos")
+            {
+                if (brd_Combo4.Visibility == Visibility.Visible)
+                {
+                    brd_Combo4.Visibility = Visibility.Hidden;
+                    return;
+                }
+
+                txtOrigen = txtDepartamento;
+                string textoConsulta = txtOrigen.Text;
+                if (textoConsulta == "Seleccione un departamento" || textoConsulta == string.Empty)
+                {
+                    textoConsulta = string.Empty;
+                }
+                dtTop5 = ProductosRepository.GetTop5Combo(nombreTabla, string.Empty, idProd);
+            }
+            else if (nombreTabla == "marcas")
+            {
+                if (brd_Combo1.Visibility == Visibility.Visible)
+                {
+                    brd_Combo1.Visibility = Visibility.Hidden;
+                    return;
+                }
+
+                txtOrigen = txtMarca;
+                string textoConsulta = txtOrigen.Text;
+                if (textoConsulta == "Seleccione una marca" || textoConsulta == string.Empty)
+                {
+                    textoConsulta = string.Empty;
+                }
+                dtTop5 = ProductosRepository.GetTop5Combo(nombreTabla, string.Empty, idProd);
+            }
+            else if (nombreTabla == "proveedores")
+            {
+                if (brd_Combo2.Visibility == Visibility.Visible)
+                {
+                    brd_Combo2.Visibility = Visibility.Hidden;
+                    return;
+                }
+
+                txtOrigen = txtProveedor;
+                string textoConsulta = txtOrigen.Text;
+                if (textoConsulta == "Seleccione un Proveedor" || textoConsulta == string.Empty)
+                {
+                    textoConsulta = string.Empty;
+                }
+                dtTop5 = ProductosRepository.GetTop5Combo(nombreTabla, string.Empty, idProd);
+
+            }
+            else if (nombreTabla == "promociones")
+            {
+                if (brd_Combo3.Visibility == Visibility.Visible)
+                {
+                    brd_Combo3.Visibility = Visibility.Hidden;
+                    return;
+                }
+
+                txtOrigen = txtPromocion;
+                string textoConsulta = txtOrigen.Text;
+                if (textoConsulta == "Selecione una Promocion" || textoConsulta == string.Empty)
+                {
+                    textoConsulta = string.Empty;
+                }
+                dtTop5 = ProductosRepository.GetTop5Combo(nombreTabla, string.Empty, idProd);
+
+            }
+            else if (nombreTabla == "clavessat")
+            {
+                if (brd_Combo6.Visibility == Visibility.Visible)
+                {
+                    brd_Combo6.Visibility = Visibility.Hidden;
+                    return;
+                }
+
+                txtOrigen = txtClaveProductoF;
+                dtTop5 = ProductosRepository.GetTop5Combo(nombreTabla, string.Empty, idProd);
+            }
+            else if (nombreTabla == "unidadesmedida")
+            {
+                if (brd_Combo5.Visibility == Visibility.Visible)
+                {
+                    brd_Combo5.Visibility = Visibility.Hidden;
+                    return;
+                }
+
+                txtOrigen = txtUM;
+                dtTop5 = ProductosRepository.GetTop5Combo(nombreTabla, string.Empty, idProd);
+            }
+
+            DataTable dtDefault = new DataTable("dtDefault");
+            dtDefault.Columns.Add("Id", typeof(string));
+            dtDefault.Columns.Add("Nombre", typeof(string));
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                dtDefault = dtTop5.Copy();
+            }
+
+            if (dtTop5.Rows.Count != 5)
+            {
+                for (int i = 1; i <= 5; i++)
+                {
+                    if (dtDefault.Rows.Count < i)
+                    {
+                        DataRow dr = dtDefault.NewRow();
+                        dr[0] = -1;
+                        dr[1] = "";
+                        dtDefault.Rows.Add(dr);
+                    }
+                }
+            }
+
+            if (dtTop5.Rows.Count < 5)
+            {
+                dtTop5 = dtDefault;
+            }
+
+            if (dtTop5.Rows.Count > 0)
+            {
+                AbreBordeCombo(dtTop5, nombreTabla);
+            }
+        }
+        private void SeleccionaOpcion(object sender, MouseButtonEventArgs e)
+        {
+            Label label = (Label)sender;
+            txtOrigen.Text = label.Content.ToString();
+            txtOrigen.Name = label.Name.ToString();
+
+            if (separarCombo)
+            {
+                string[] txtOrigenSplit = txtOrigen.Text.Split(':');
+                if (txtOrigenSplit.Length >= 2)
+                {
+                    txtOrigen.Text = txtOrigenSplit[1];
+                }
+            }
+
+            brd_Combo1.Visibility = Visibility.Hidden;
+            brd_Combo2.Visibility = Visibility.Hidden;
+            brd_Combo3.Visibility = Visibility.Hidden;
+            brd_Combo4.Visibility = Visibility.Hidden;
+            brd_Combo5.Visibility = Visibility.Hidden;
+            brd_Combo6.Visibility = Visibility.Hidden;
+
+            txtFiltroDept.Text = String.Empty;
+            txtFiltroMarca.Text = String.Empty;
+            txtFiltroProm.Text = String.Empty;
+            txtFiltroProv.Text = String.Empty;
+            txtFiltroUM.Text = String.Empty;
+            txtClaveSAT.Text = String.Empty;
+        }
+        private void AbreBordeCombo(DataTable _dtOpciones, string nombreTable)
+        {
+            Label label1 = new Label();
+            Label label2 = new Label();
+            Label label3 = new Label();
+            Label label4 = new Label();
+            Label label5 = new Label();
+
+            label1.PreviewMouseDown += new MouseButtonEventHandler(SeleccionaOpcion);
+            label2.PreviewMouseDown += new MouseButtonEventHandler(SeleccionaOpcion);
+            label3.PreviewMouseDown += new MouseButtonEventHandler(SeleccionaOpcion);
+            label4.PreviewMouseDown += new MouseButtonEventHandler(SeleccionaOpcion);
+            label5.PreviewMouseDown += new MouseButtonEventHandler(SeleccionaOpcion);
+
+            string nombreId1 = _dtOpciones.Rows[0][0].ToString();
+            string nombreId2 = _dtOpciones.Rows[1][0].ToString();
+            string nombreId3 = _dtOpciones.Rows[2][0].ToString();
+            string nombreId4 = _dtOpciones.Rows[3][0].ToString();
+            string nombreId5 = _dtOpciones.Rows[4][0].ToString();
+
+            label1.Name = "txtOpcion_A";
+            label2.Name = "txtOpcion_B";
+            label3.Name = "txtOpcion_C";
+            label4.Name = "txtOpcion_D";
+            label5.Name = "txtOpcion_E";
+
+            if (nombreId1 != "-1")
+            {
+                label1.Name = "txtOpcion_" + nombreId1;
+            }
+            if (nombreId2 != "-1")
+            {
+                label2.Name = "txtOpcion_" + nombreId2;
+            }
+            if (nombreId3 != "-1")
+            {
+                label3.Name = "txtOpcion_" + nombreId3;
+            }
+            if (nombreId4 != "-1")
+            {
+                label4.Name = "txtOpcion_" + nombreId4;
+            }
+            if (nombreId5 != "-1")
+            {
+                label5.Name = "txtOpcion_" + nombreId5;
+            }
+
+            label1.Content = _dtOpciones.Rows[0][1].ToString();
+            label2.Content = _dtOpciones.Rows[1][1].ToString();
+            label3.Content = _dtOpciones.Rows[2][1].ToString();
+            label4.Content = _dtOpciones.Rows[3][1].ToString();
+            label5.Content = _dtOpciones.Rows[4][1].ToString();
+
+            label1.FontFamily = new FontFamily("Avenir LT Std 55 Roman");
+            label2.FontFamily = new FontFamily("Avenir LT Std 55 Roman");
+            label3.FontFamily = new FontFamily("Avenir LT Std 55 Roman");
+            label4.FontFamily = new FontFamily("Avenir LT Std 55 Roman");
+            label5.FontFamily = new FontFamily("Avenir LT Std 55 Roman");
+
+            if (!string.IsNullOrEmpty(label1.Content.ToString().Trim()))
+            {
+                label1.Visibility = Visibility.Visible;
+            }
+
+            if (!string.IsNullOrEmpty(label2.Content.ToString().Trim()))
+            {
+                label2.Visibility = Visibility.Visible;
+            }
+
+            if (!string.IsNullOrEmpty(label3.Content.ToString().Trim()))
+            {
+                label3.Visibility = Visibility.Visible;
+            }
+
+            if (!string.IsNullOrEmpty(label4.Content.ToString().Trim()))
+            {
+                label4.Visibility = Visibility.Visible;
+            }
+
+            if (!string.IsNullOrEmpty(label5.Content.ToString().Trim()))
+            {
+                label5.Visibility = Visibility.Visible;
+            }
+
+            separarCombo = false;
+            if (nombreTable == "departamentos")
+            {
+                stk_Combo4.Children.Clear();
+                stk_Combo4.Children.Add(label1);
+                stk_Combo4.Children.Add(label2);
+                stk_Combo4.Children.Add(label3);
+                stk_Combo4.Children.Add(label4);
+                stk_Combo4.Children.Add(label5);
+
+                brd_Combo4.Visibility = Visibility.Visible;
+            }
+            else if (nombreTable == "marcas")
+            {
+                stk_Combo1.Children.Clear();
+                stk_Combo1.Children.Add(label1);
+                stk_Combo1.Children.Add(label2);
+                stk_Combo1.Children.Add(label3);
+                stk_Combo1.Children.Add(label4);
+                stk_Combo1.Children.Add(label5);
+
+                brd_Combo1.Visibility = Visibility.Visible;
+            }
+            else if (nombreTable == "proveedores")
+            {
+                stk_Combo2.Children.Clear();
+                stk_Combo2.Children.Add(label1);
+                stk_Combo2.Children.Add(label2);
+                stk_Combo2.Children.Add(label3);
+                stk_Combo2.Children.Add(label4);
+                stk_Combo2.Children.Add(label5);
+
+                brd_Combo2.Visibility = Visibility.Visible;
+            }
+            else if (nombreTable == "promociones")
+            {
+                stk_Combo3.Children.Clear();
+                stk_Combo3.Children.Add(label1);
+                stk_Combo3.Children.Add(label2);
+                stk_Combo3.Children.Add(label3);
+                stk_Combo3.Children.Add(label4);
+                stk_Combo3.Children.Add(label5);
+
+                brd_Combo3.Visibility = Visibility.Visible;
+            }
+            else if (nombreTable == "clavessat")
+            {
+                stk_Combo6.Children.Clear();
+                stk_Combo6.Children.Add(label1);
+                stk_Combo6.Children.Add(label2);
+                stk_Combo6.Children.Add(label3);
+                stk_Combo6.Children.Add(label4);
+                stk_Combo6.Children.Add(label5);
+
+                brd_Combo6.Visibility = Visibility.Visible;
+                separarCombo = true;
+            }
+            else if (nombreTable == "unidadesmedida")
+            {
+                stk_Combo5.Children.Clear();
+                stk_Combo5.Children.Add(label1);
+                stk_Combo5.Children.Add(label2);
+                stk_Combo5.Children.Add(label3);
+                stk_Combo5.Children.Add(label4);
+                stk_Combo5.Children.Add(label5);
+
+                brd_Combo5.Visibility = Visibility.Visible;
+                separarCombo = true;
+            }
+        }
+        private void AbreDialogoCombo(object sender, DataTable dtTop5, TextBox txtOrigen)
+        {
+            Button btnCombo = (Button)sender;
+            Point relativePoint = btnCombo.TransformToAncestor(this).Transform(new Point(0, 0));
+            DialogComboBox.posicionControl = relativePoint;
+
+            DialogComboBox dialogCombo = new DialogComboBox(dtTop5, txtOrigen);
+            dialogCombo.Show();
+        }
+        private void PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            Regex regex = new Regex("[^0-9]+");
+            e.Handled = regex.IsMatch(e.Text);
+        }
+        private bool Validaciones(Producto productoVal)
+        {
+            bool r = true;
+            string mensajeError = string.Empty;
+
+            #region Validaciones generales
+            if (r && !string.IsNullOrEmpty(productoVal.Id_marca.ToString()))
+            {
+                if (productoVal.Id_marca.ToString() != "0")
+                {
+                    var modelVal = MarcasRepository.GetById(productoVal.Id_marca.ToString());
+                    if (modelVal == null)
+                    {
+                        mensajeError += "Marca no existe o fue dada de baja.";
+                        r = false;
+                    }
+                }
+            }
+
+            if (r && !string.IsNullOrEmpty(productoVal.Id_departamento.ToString()))
+            {
+                if (productoVal.Id_departamento.ToString() != "0")
+                {
+                    var modelVal = DepartamentosRepository.GetById(productoVal.Id_departamento.ToString());
+                    if (modelVal == null)
+                    {
+                        mensajeError += "Departamento no existe o fue dado de baja.";
+                        r = false;
+                    }
+                }
+
+            }
+
+            if (r && !string.IsNullOrEmpty(productoVal.Id_proveedor.ToString()))
+            {
+                if (productoVal.Id_proveedor.ToString() != "0")
+                {
+                    var modelVal = ProveedoresRepository.GetById(productoVal.Id_proveedor.ToString());
+                    if (modelVal == null)
+                    {
+                        mensajeError += "Proveedor no existe o fue dado de baja.";
+                        r = false;
+                    }
+                }
+            }
+
+            if (r && (string.IsNullOrEmpty(productoVal.SKU.ToString()) || productoVal.SKU.ToString() == textoSKU))
+            {
+                mensajeError += "SKU no puede estar vacio.";
+                r = false;
+            }
+
+            if (r && (string.IsNullOrEmpty(productoVal.Descripcion.ToString()) || productoVal.Descripcion.ToString() == textoDescripcion))
+            {
+                mensajeError += "Descripcion no puede estar vacia.";
+                r = false;
+            }
+
+            if (r && (!Generales.EsNumerico(txtIEPS8.Text)))
+            {
+                mensajeError += "Valor de IEPS debe de ser numerico.";
+                r = false;
+            }
+
+            if (r && (!Generales.EsNumerico(txtIEPS16.Text)))
+            {
+                mensajeError += "Valor de IVA debe de ser numerico.";
+                r = false;
+            }
+
+            if (r && (Decimal.Parse(txtIEPS16.Text) < 0))
+            {
+                mensajeError += "Valor de IVA no puede ser menor que 0.";
+                r = false;
+            }
+
+            if (r && (Decimal.Parse(txtIEPS8.Text) < 0))
+            {
+                mensajeError += "Valor de IEPS no puede ser menor que 0.";
+                r = false;
+            }
+            #endregion
+
+            if (!string.IsNullOrEmpty(mensajeError))
+            {
+                Dialogos.ShowMessage(mensajeError, "Error", "Cerrar", "Ok", TipoDialogo.Error);
+            }
+
+            return r;
+        }
+        private void txtNumTextChanged(object sender, TextChangedEventArgs e)
+        {
+            ActualizaSlider();
+        }
+        private void Guardar()
+        {
+            Producto productoCRUD = new Producto();
+
+            if (txtMarca.Text != textoMarca)
+            {
+                idtxtMarca.Text = txtMarca.Name.Replace("txtOpcion_", "");
+            }
+            if (txtDepartamento.Text != textoDepto)
+            {
+                idtxtDepartamento.Text = txtDepartamento.Name.Replace("txtOpcion_", "");
+            }
+            if (txtProveedor.Text != textoProveedor)
+            {
+                idtxtProveedor.Text = txtProveedor.Name.Replace("txtOpcion_", "");
+            }
+            if (txtPromocion.Text != textoPromocion)
+            {
+                idtxtPromocion.Text = txtPromocion.Name.Replace("txtOpcion_", "");
+            }
+
+            if (!string.IsNullOrEmpty(txtUM.Text))
+            {
+                if (txtUM.Name.ToString().Contains("txtOpcion_"))
+                {
+                    txtIdUM.Text = txtUM.Name.Replace("txtOpcion_", "");
+                }
+            }
+            if (!string.IsNullOrEmpty(txtClaveProductoF.Text))
+            {
+                if (txtClaveProductoF.Name.ToString().Contains("txtOpcion_"))
+                {
+                    idClaveProductoF.Text = txtClaveProductoF.Name.Replace("txtOpcion_", "");
+                }
+
+            }
+
+            if (esNuevo)
+            {
+                productoCRUD.Id_marca = Int32.Parse(idtxtMarca.Text);
+                productoCRUD.Id_departamento = Int32.Parse(idtxtDepartamento.Text);
+                productoCRUD.Id_proveedor = Int32.Parse(idtxtProveedor.Text);
+
+                productoCRUD.SKU = txtSKU.Text;
+                productoCRUD.Descripcion = txtDescripcion.Text;
+                productoCRUD.Imagen = txtDirImagen.Text.Replace("\\", "\\\\");
+                productoCRUD.Stock = Decimal.Parse(txtCantEntrada.Text);
+                productoCRUD.Caducidad = Int32.Parse(txtCaducidad.Text);
+                productoCRUD.Stock_maximo = Decimal.Parse(txtStockMax.Text);
+                productoCRUD.Stock_minimo = Decimal.Parse(txtStockMin.Text);
+                productoCRUD.Ganancia = Int32.Parse(txtGanancia.Text);
+                productoCRUD.Precio = Decimal.Parse(txtPrecio.Text);
+                productoCRUD.Costo = Decimal.Parse(txtCosto.Text);
+                productoCRUD.Id_unidadmedida = Int32.Parse(txtIdUM.Text);
+                productoCRUD.Id_clavesat = Int32.Parse(idClaveProductoF.Text);
+                productoCRUD.Granel = (chkGranel.IsChecked == true);
+
+                productoCRUD.Granel = (chkGranel.IsChecked == true);
+                productoCRUD.IEPS = (chkIEPS8.IsChecked == true);
+                productoCRUD.IVA = (chkIEPS16.IsChecked == true);
+                productoCRUD.Monto_ieps = Decimal.Parse(txtIEPS8.Text);
+                productoCRUD.Monto_iva = Decimal.Parse(txtIEPS16.Text);
+                productoCRUD.Estatus = true;
+            }
+            else
+            {
+                productoCRUD = productoUpdate;
+
+                productoCRUD.Id_marca = Int32.Parse(idtxtMarca.Text);
+                productoCRUD.Id_departamento = Int32.Parse(idtxtDepartamento.Text);
+                productoCRUD.Id_proveedor = Int32.Parse(idtxtProveedor.Text);
+
+                productoCRUD.SKU = txtSKU.Text;
+                productoCRUD.Descripcion = txtDescripcion.Text;
+                productoCRUD.Imagen = txtDirImagen.Text.Replace("\\", "\\\\");
+
+                productoCRUD.Stock = Decimal.Parse(txtCantEntrada.Text);
+                productoCRUD.Caducidad = Int32.Parse(txtCaducidad.Text);
+                productoCRUD.Stock_maximo = Decimal.Parse(txtStockMax.Text);
+                productoCRUD.Stock_minimo = Decimal.Parse(txtStockMin.Text);
+                productoCRUD.Ganancia = Int32.Parse(txtGanancia.Text);
+                productoCRUD.Precio = Decimal.Parse(txtPrecio.Text);
+                productoCRUD.Costo = Decimal.Parse(txtCosto.Text);
+                productoCRUD.Id_unidadmedida = Int32.Parse(txtIdUM.Text);
+                productoCRUD.Id_clavesat = Int32.Parse(idClaveProductoF.Text);
+                productoCRUD.Granel = (chkGranel.IsChecked == true);
+
+                productoCRUD.Granel = (chkGranel.IsChecked == true);
+                productoCRUD.IEPS = (chkIEPS8.IsChecked == true);
+                productoCRUD.IVA = (chkIEPS16.IsChecked == true);
+                productoCRUD.Monto_ieps = Decimal.Parse(txtIEPS8.Text);
+                productoCRUD.Monto_iva = Decimal.Parse(txtIEPS16.Text);
+                productoCRUD.Estatus = true;
+            }
+
+            if (Validaciones(productoCRUD))
+            {
+                bool res = false;
+                if (esNuevo)
+                {
+                    res = ProductosRepository.Insert(productoCRUD);
+                    if (res)
+                    {
+                        Dialogos.ShowMessage("Producto guardado.");
+                        Cerrar();
+                    }
+                    else
+                    {
+                        Dialogos.ShowMessage("No fue posible guardar.");
+                    }
+                }
+                else
+                {
+                    res = ProductosRepository.Update(productoCRUD);
+                    if (res)
+                    {
+                        Dialogos.ShowMessage("Producto guardado.");
+                        Inicio();
+                    }
+                    else
+                    {
+                        Dialogos.ShowMessage("No fue posible guardar.");
+                    }
+                }
+            }
+        }
+        private void AsignaTeclado()
+        {
+            Dialogos.Teclado(txtSKU);
+            Dialogos.Teclado(txtDescripcion);
+            Dialogos.Teclado(txtFiltroUM);
+            Dialogos.Teclado(txtClaveSAT);
+            Dialogos.Teclado(txtFiltroDept);
+            Dialogos.Teclado(txtFiltroMarca);
+            Dialogos.Teclado(txtFiltroProm);
+            Dialogos.Teclado(txtFiltroProv);
+            //Dialogos.Teclado(txtMarca);
+            //Dialogos.Teclado(txtDepartamento);
+            //Dialogos.Teclado(txtProveedor);
+
+            Dialogos.TecladoNumerico(txtCantEntrada);
+            Dialogos.TecladoNumerico(txtCantEntrada);
+            Dialogos.TecladoNumerico(txtCaducidad);
+            Dialogos.TecladoNumerico(txtStockMax);
+            Dialogos.TecladoNumerico(txtStockMin);
+            Dialogos.TecladoNumerico(txtGanancia);
+            Dialogos.TecladoNumerico(txtPrecio);
+            Dialogos.TecladoNumerico(txtCosto);
+        }
+        #endregion
+
+    }
+}
